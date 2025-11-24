@@ -49,19 +49,23 @@ class PlanningActionServer(Node):
 
     def execute_callback(self, goal_handle: ServerGoalHandle):
 
-        self.get_logger().info("setting start state...")
+        self.get_logger().info("moving robot to random start state")
         self.panda_arm.set_start_state_to_current_state()
         
-        self.get_logger().info("Setting goal state...")
         self.robot_state.set_to_random_positions()
         self.panda_arm.set_goal_state(robot_state=self.robot_state)
 
-        self.get_logger().info("Creating plan...")
         plan_result = self.panda_arm.plan()
-
-        self.get_logger().info("executing plan...")
         self.moveit_node.execute(plan_result.trajectory, controllers=[])
 
+
+        self.get_logger().info("moving robot to ready state")
+        self.panda_arm.set_start_state_to_current_state()
+        
+        self.panda_arm.set_goal_state(configuration_name="ready")
+
+        plan_result = self.panda_arm.plan()
+        self.moveit_node.execute(plan_result.trajectory, controllers=[])
         
 
         self.get_logger().info("prompting vlm...")
