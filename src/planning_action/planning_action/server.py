@@ -27,8 +27,6 @@ class PlanningActionServer(Node):
         self.moveit_node = moveit_node
 
         self.panda_arm: PlanningComponent = self.moveit_node.get_planning_component("panda_arm")
-        print(type(self.panda_arm))
-        t = 1/0
         self.robot_model = self.moveit_node.get_robot_model()
         self.robot_state = RobotState(self.robot_model)
 
@@ -53,13 +51,10 @@ class PlanningActionServer(Node):
 
         self.get_logger().info("setting start state...")
         self.panda_arm.set_start_state_to_current_state()
-        print(type(self.panda_arm))
-
         
         self.get_logger().info("Setting goal state...")
         self.robot_state.set_to_random_positions()
         self.panda_arm.set_goal_state(robot_state=self.robot_state)
-        self.panda_arm.set_path_constraints()
 
         self.get_logger().info("Creating plan...")
         plan_result = self.panda_arm.plan()
