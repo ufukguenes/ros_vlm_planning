@@ -9,26 +9,23 @@ import os
 import time
 from openai import OpenAI
 from dotenv import load_dotenv, dotenv_values
-from rclpy.action import ActionClient
-from moveit.planning import PlanningComponent, MoveItPy
+from moveit.planning import MoveItPy
 
 from rclpy.executors import MultiThreadedExecutor
-from moveit.planning import MoveItPy, PlanningComponent
-from moveit.core.robot_state import RobotState
+from moveit.planning import MoveItPy
 from moveit_configs_utils import MoveItConfigsBuilder
 from ament_index_python import get_package_share_directory
+
+from .ActionWrapper.AbstractActionWrapper import AbstractActionWrapper
+from .ActionWrapper.DummyActionWrapper import DummyActionWrapper
 
 
 class PlanningActionServer(Node):
 
-    def __init__(self, moveit_node: MoveItPy):
+    def __init__(self, action_wrapper: AbstractActionWrapper):
         super().__init__("planning_action_server")
 
-        self.moveit_node = moveit_node
-
-        self.panda_arm: PlanningComponent = self.moveit_node.get_planning_component("panda_arm")
-        self.robot_model = self.moveit_node.get_robot_model()
-        self.robot_state = RobotState(self.robot_model)
+        self.action_wrapper = action_wrapper
 
 
         self.get_logger().info("MoveItPy initialized and planning component loaded.")
@@ -49,47 +46,43 @@ class PlanningActionServer(Node):
 
     def execute_callback(self, goal_handle: ServerGoalHandle):
 
-        self.get_logger().info("moving robot to random start state")
-        self.panda_arm.set_start_state_to_current_state()
-        
-        self.robot_state.set_to_random_positions()
-        self.panda_arm.set_goal_state(robot_state=self.robot_state)
-
-        plan_result = self.panda_arm.plan()
-        self.moveit_node.execute(plan_result.trajectory, controllers=[])
-
-
-        self.get_logger().info("moving robot to ready state")
-        self.panda_arm.set_start_state_to_current_state()
-        
-        self.panda_arm.set_goal_state(configuration_name="ready")
-
-        plan_result = self.panda_arm.plan()
-        self.moveit_node.execute(plan_result.trajectory, controllers=[])
-        
-
         self.get_logger().info("prompting vlm...")
         prompt = goal_handle.request.prompt
 
-        """response = self.client.chat.completions.create(
+        feedback_msg = Planning.Feedback()
+        feedback_msg.incomplete_plan = f"waiting for vlm"
+        goal_handle.publish_feedback(feedback_msg)
+
+        response = self.client.chat.completions.create(
             model="gemini-2.5-flash",
             messages=[
-                {"role": "system", "content": "You are a robot."},
+                {"role": "system", "content": 
+                 "You are a robot. "
+                 "Pick one or multiple of the following actions which best solves the task."
+                 "If there are parameters available, provide parameters for the action."
+                 "Parameters are provided as a comma seperated list after each possible action. "
+                 "Do not wrap the actions or parameters in additional apostrophes, provide the combination as: action param_1 param_2 ...\n"
+                 "Each action should be in its own line"
+                 f"Available actions: \n {self.action_wrapper.list_available_parameterizable_actions()}"},
                 {"role": "user", "content": prompt},
             ],
         )
 
-        feedback_msg = Planning.Feedback()
-        for i in range(10):
-            feedback_msg.incomplete_plan = f"waiting for vlm: {i}"
-            goal_handle.publish_feedback(feedback_msg)
-            time.sleep(0.01)"""
+        
+        feedback_msg.incomplete_plan = f"received message from vlm, executing plan"
+        goal_handle.publish_feedback(feedback_msg)
 
         result = Planning.Result()
-        # result.plan = response.choices[0].message.content
-        goal_handle.succeed()
+        result.plan = response.choices[0].message.content
+        print(response.choices[0].message)
 
-        # print(response.choices[0].message)
+        for line in result.plan.split("\n"):
+            action, params = self.action_wrapper.convert_string_line_to_action(line)
+            print(action, params)
+            self.action_wrapper.call_parameterized_action(action, params)
+
+        
+        goal_handle.succeed()
 
         self.get_logger().info("Completed")
         return result
@@ -101,9 +94,10 @@ def main(args=None):
     moveit_config_builder = MoveItConfigsBuilder("panda")
     moveit_config_builder.moveit_cpp(file_path=get_package_share_directory("panda_moveit_config") + "/config/moveit_cpp.yaml") 
     moveit_config_dict = moveit_config_builder.to_moveit_configs().to_dict()
-    moveit_py_node = MoveItPy(node_name="moveit_py", config_dict=moveit_config_dict)
+    moveit_node = MoveItPy(node_name="moveit_py", config_dict=moveit_config_dict)
 
-    planning_action_server = PlanningActionServer(moveit_py_node)
+    action_wrapper = DummyActionWrapper(moveit_node)
+    planning_action_server = PlanningActionServer(action_wrapper)
 
     executor = MultiThreadedExecutor()
 
