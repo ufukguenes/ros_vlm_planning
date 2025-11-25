@@ -65,3 +65,5 @@ CATKIN_IGNORE
 
 # environment variables
 .env
+
+dummy_img.jpg

@@ -24,6 +24,7 @@ setup(
     entry_points={
         "console_scripts": [
             "server = planning_action.server:main",
+            "dummy_img_publisher = planning_action.dummy_img_publisher:main"
         ],
     },
 )
