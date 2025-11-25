@@ -7,6 +7,7 @@ class DummyActions(Enum):
     GRIPPER = ("open_or_close", "open,close")
     ARM_READY_POSE = ("ready",)
     RANDOM_POSE = ("random_pose",)
+    POINT = ("point", "x_pos", "y_pos")
 
     @classmethod
     def from_value(cls, action_value: str):
@@ -50,6 +51,9 @@ class DummyActionWrapper(AbstractActionWrapper):
             case DummyActions.RANDOM_POSE:
                 self.robot_state.set_to_random_positions()
                 self.set_action(self.panda_arm, robot_state=self.robot_state)
+
+            case DummyActions.POINT:
+                print(action, parameters)
 
             case _:
                 raise ValueError(f"Unknown action string: {action}")

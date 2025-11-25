@@ -23,11 +23,11 @@ class DummyImgPublisher(Node):
             self.dummy_img.data = f.read()
             self.get_logger().info('Image data loaded successfully.')
 
-        self.dummy_img.header.frame_id = 'map'
+        self.dummy_img.header.frame_id = 'world'
 
 
         self.camera_info = CameraInfo()
-        self.camera_info.header.frame_id = 'map'
+        self.camera_info.header.frame_id = 'world'
         self.camera_info.width = 4000
         self.camera_info.height = 3000
         self.camera_info.distortion_model = 'plumb_bob'

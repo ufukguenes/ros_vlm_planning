@@ -48,9 +48,9 @@ class PlanningActionServer(Node):
 
         self.img_subscription = self.create_subscription(
             CompressedImage,
-            'topic',
+            'dummy_img/compressed',
             self.img_callback,
-            2
+            1
         )
         self.current_img: CompressedImage = None
 
