@@ -19,6 +19,7 @@ from moveit_configs_utils import MoveItConfigsBuilder
 from ament_index_python import get_package_share_directory
 
 from sensor_msgs.msg import CompressedImage, CameraInfo
+from std_msgs.msg import Header
 
 from .ActionWrapper.AbstractActionWrapper import AbstractActionWrapper
 from .ActionWrapper.DummyActionWrapper import DummyActionWrapper
@@ -48,7 +49,7 @@ class PlanningActionServer(Node):
 
         self.img_subscription = self.create_subscription(
             CompressedImage,
-            'dummy_img/compressed',
+            '/camera/camera/color/image_rect_raw/compressed',
             self.img_callback,
             1
         )
@@ -85,6 +86,7 @@ class PlanningActionServer(Node):
                     "If there are parameters available, provide parameters for the action."
                     "Parameters are provided as a comma seperated list after each possible action. "
                     "Do not wrap the actions or parameters in additional apostrophes, provide the combination as: action param_1 param_2 ...\n"
+                    "Specifically each parameter is seperated by a whitespace"
                     "Each action should be in its own line"
                     f"Available actions: \n {self.action_wrapper.list_available_parameterizable_actions()}"
                 },
@@ -117,7 +119,9 @@ class PlanningActionServer(Node):
         for line in result.plan.split("\n"):
             action, params = self.action_wrapper.convert_string_line_to_action(line)
             print(action, params)
-            self.action_wrapper.call_parameterized_action(action, params)
+            header = Header()
+            header.stamp = self.get_clock().now().to_msg()
+            self.action_wrapper.call_parameterized_action(action, params, header)
 
         
         goal_handle.succeed()

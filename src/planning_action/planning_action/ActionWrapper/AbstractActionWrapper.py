@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from moveit.planning import MoveItPy, PlanningComponent
 from moveit.core.robot_state import RobotState
-
+from std_msgs.msg import Header
 
 class AbstractActionWrapper(ABC):
 
@@ -19,7 +19,7 @@ class AbstractActionWrapper(ABC):
     def list_available_parameterizable_actions(self) -> str: ...
 
     @abstractmethod
-    def call_parameterized_action(self, action: str, parameters: list[str]) -> None: ...
+    def call_parameterized_action(self, action: str, parameters: list[str], header: Header) -> None: ...
 
     @abstractmethod
     def convert_string_line_to_action(self, line: str) -> tuple[str, list[str]]: ...

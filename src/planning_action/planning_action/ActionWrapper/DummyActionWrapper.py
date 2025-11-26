@@ -2,12 +2,15 @@ from .AbstractActionWrapper import AbstractActionWrapper
 from enum import Enum
 
 from moveit.planning import PlanningComponent
+from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Header
 
 class DummyActions(Enum):
     GRIPPER = ("open_or_close", "open,close")
     ARM_READY_POSE = ("ready",)
     RANDOM_POSE = ("random_pose",)
     POINT = ("point", "x_pos", "y_pos")
+    MOVE_ABOVE = ("move_above", "x_pos", "y_pos", "z_pos")
 
     @classmethod
     def from_value(cls, action_value: str):
@@ -35,7 +38,7 @@ class DummyActionWrapper(AbstractActionWrapper):
         return DummyActions.to_list()
     
 
-    def call_parameterized_action(self, action: str, parameters: list[str]) -> None:
+    def call_parameterized_action(self, action: str, parameters: list[str], header: Header) -> None:
         print(f"dummy execution of {action} with parameters {parameters}")
 
         print(action)
@@ -55,6 +58,10 @@ class DummyActionWrapper(AbstractActionWrapper):
             case DummyActions.POINT:
                 print(action, parameters)
 
+            case DummyActions.MOVE_ABOVE:
+                pose_stamped = self.create_pose_from_xyz(*parameters, header)
+                self.set_action(self.panda_arm, pose_stamped_msg=pose_stamped, pose_link='panda_hand')
+
             case _:
                 raise ValueError(f"Unknown action string: {action}")
     
@@ -64,7 +71,25 @@ class DummyActionWrapper(AbstractActionWrapper):
 
     def set_action(self, planning_component: PlanningComponent, **kwargs):
         planning_component.set_start_state_to_current_state()
+        print(kwargs)
         planning_component.set_goal_state(**kwargs)
 
         plan_result = planning_component.plan()
         self.moveit_node.execute(plan_result.trajectory, controllers=[])
+
+
+    def create_pose_from_xyz(self, x, y, z, header: Header, frame_id="world"):
+        pose_stamped = PoseStamped()
+        pose_stamped.header = header
+        pose_stamped.header.frame_id = frame_id
+
+        pose_stamped.pose.position.x = float(x)
+        pose_stamped.pose.position.y = float(y)
+        pose_stamped.pose.position.z = float(z)
+
+        pose_stamped.pose.orientation.x = 0.0
+        pose_stamped.pose.orientation.y = 0.0
+        pose_stamped.pose.orientation.z = 0.0
+        pose_stamped.pose.orientation.w = 1.0
+
+        return pose_stamped
