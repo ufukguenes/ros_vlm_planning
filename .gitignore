@@ -60,9 +60,6 @@ CATKIN_IGNORE
 # python venv
 *venv/
 
-# vscode
-.vscode/
-
 # environment variables
 .env
 

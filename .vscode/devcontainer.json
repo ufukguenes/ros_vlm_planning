@@ -1,0 +1,4 @@
+{
+  "image": "registry.localhost/data-farm-oss/franka-robot:latest",
+  "forwardPorts": [3000]
+}
